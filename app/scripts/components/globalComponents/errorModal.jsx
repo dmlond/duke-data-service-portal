@@ -18,14 +18,15 @@ class ErrorModal extends React.Component {
             <div>
                 <Dialog
                     style={styles.dialogStyles}
-                    title="We're sorry, it looks like you don't have permission to view this project"
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
+                    title="We're sorry, it looks like you don't have permission to access this feature at this time."
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}
                     actions={actions}
                     open={this.props.errorModal}
                     onRequestClose={this.handleClose.bind(this)}>
                     <i className="material-icons" style={styles.warning}>warning</i>
-                    <p>Contact the project manager or system administrator for access.</p>
+                    <p>Contact the project manager or system administrator to request access.</p>
                 </Dialog>
             </div>
         );
@@ -33,7 +34,6 @@ class ErrorModal extends React.Component {
 
     handleClose() {
         ProjectActions.closeErrorModal();
-        this.props.appRouter.transitionTo('/home');
     };
 }
 

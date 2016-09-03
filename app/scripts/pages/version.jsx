@@ -2,7 +2,6 @@ import React from 'react'
 import ProjectActions from '../actions/projectActions';
 import ProjectStore from '../stores/projectStore';
 import VersionDetails from '../components/fileComponents/versionDetails.jsx';
-import Header from '../components/globalComponents/header.jsx';
 
 class Version extends React.Component {
 
@@ -12,9 +11,10 @@ class Version extends React.Component {
             error: ProjectStore.error,
             errorModal: ProjectStore.errorModal,
             loading: false,
-            project: ProjectStore.project,
             moveModal: ProjectStore.moveModal,
-            moveErrorModal: ProjectStore.moveErrorModal
+            moveErrorModal: ProjectStore.moveErrorModal,
+            projPermissions: ProjectStore.projPermissions,
+            screenSize: ProjectStore.screenSize
         };
     }
 
@@ -41,6 +41,11 @@ class Version extends React.Component {
     }
 
     render() {
+        if(this.state.entityObj && this.props.currentUser && this.props.currentUser.id) {
+            let projId = this.state.entityObj && this.state.entityObj.file.project ? this.state.entityObj.file.project.id : null;
+            let userId = this.props.currentUser && this.props.currentUser.id ? this.props.currentUser.id : null;
+            if (this.state.projPermissions === null) ProjectActions.getPermissions(projId, userId);
+        }
         return (
             <div>
                 <VersionDetails {...this.props} {...this.state}/>

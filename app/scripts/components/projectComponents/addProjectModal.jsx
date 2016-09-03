@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router';
 import ProjectActions from '../../actions/projectActions';
 import FlatButton from 'material-ui/lib/flat-button';
 import Dialog from 'material-ui/lib/dialog';
@@ -39,6 +38,7 @@ class AddProjectModal extends React.Component {
                     onTouchTap={this.handleTouchTap.bind(this)} />
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="Add New Project"
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}

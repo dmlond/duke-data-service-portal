@@ -4,12 +4,30 @@ import MainStore from '../stores/mainStore';
 import ProjectStore from '../stores/projectStore';
 import urlGen from '../../util/urlGen.js';
 import appConfig from '../config';
-import StatusEnum from '../enum';
+import { StatusEnum, Path } from '../enum';
 import { checkStatus, getAuthenticatedFetchParams } from '../../util/fetchUtil.js';
 
 var ProjectActions = Reflux.createActions([
+    'clearSelectedItems',
+    'getScreenSize',
+    'toggleUploadManager',
+    'toggleTagManager',
+    'addNewTag',
+    'addNewTagSuccess',
+    'appendTags',
+    'appendTagsSuccess',
+    'getTagAutoCompleteList',
+    'getTagAutoCompleteListSuccess',
+    'getTagLabels',
+    'getTagLabelsSuccess',
+    'getTags',
+    'getTagsSuccess',
+    'deleteTag',
+    'deleteTagSuccess',
+    'getDeviceType',
     'hashFile',
     'postHash',
+    'checkForHash',
     'openModal',
     'closeModal',
     'openMoveModal',
@@ -33,6 +51,8 @@ var ProjectActions = Reflux.createActions([
     'editVersionSuccess',
     'getUser',
     'getUserSuccess',
+    'getPermissions',
+    'getPermissionsSuccess',
     'getUserKey',
     'getUserKeySuccess',
     'createUserKey',
@@ -59,8 +79,7 @@ var ProjectActions = Reflux.createActions([
     'clearApiToken',
     'loadProjects',
     'loadProjectsSuccess',
-    'loadProjectChildren',
-    'loadProjectChildrenSuccess',
+    'deleteItemSuccess',
     'addProject',
     'addProjectSuccess',
     'deleteProject',
@@ -69,18 +88,14 @@ var ProjectActions = Reflux.createActions([
     'editProjectSuccess',
     'showDetails',
     'showDetailsSuccess',
-    'loadFolderChildren',
-    'loadFolderChildrenSuccess',
     'addFolder',
     'addFolderSuccess',
     'deleteFolder',
-    'deleteFolderSuccess',
     'editFolder',
     'editFolderSuccess',
     'addFile',
     'addFileSuccess',
     'deleteFile',
-    'deleteFileSuccess',
     'editFile',
     'editFileSuccess',
     'getEntity',
@@ -98,17 +113,154 @@ var ProjectActions = Reflux.createActions([
     'getDownloadUrl',
     'getDownloadUrlSuccess',
     'showBatchOptions',
+    'setBatchItems',
+    'batchDeleteItems',
     'startUpload',
     'startUploadSuccess',
     'updateChunkProgress',
     'updateAndProcessChunks',
     'allChunksUploaded',
     'uploadError',
-    'getChunkUrl'
+    'getChunkUrl',
+    'search',
+    'setSearchText',
+    'getChildren',
+    'getChildrenSuccess'
 ]);
 
+ProjectActions.addNewTag.preEmit = function (id, kind, tag) {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'tags/', {
+        method: 'post',
+        headers: {
+            'Authorization': appConfig.apiToken,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            'object': {
+                'kind': kind,
+                'id': id
+            },
+            'label': tag
+        })
+    }).then(checkResponse).then(function (response) {
+        return response.json()
+    }).then(function (json) {
+        MainActions.addToast('Added '+json.label+' tag');
+        ProjectActions.addNewTagSuccess(id);
+    }).catch(function (ex) {
+        MainActions.addToast('Failed to add new tag');
+        ProjectActions.handleErrors(ex)
+    })
+};
+
+ProjectActions.appendTags.preEmit = function (id, kind, tags) {
+    let msg = tags.map((tag)=>{return tag.label});
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'tags/' + kind + '/' + id + '/append', {
+        method: 'post',
+        headers: {
+            'Authorization': appConfig.apiToken,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            tags
+        })
+    }).then(checkResponse).then(function (response) {
+        return response.json()
+    }).then(function (json) {
+        MainActions.addToast('Added '+msg+' as tags to all selected files.');
+        ProjectActions.appendTagsSuccess(id);
+    }).catch(function (ex) {
+        MainActions.addToast('Failed to add tags');
+        ProjectActions.handleErrors(ex)
+    })
+};
+
+ProjectActions.deleteTag.preEmit = function (id, label, fileId) {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'tags/' + id, {
+        method: 'delete',
+        headers: {
+            'Authorization': appConfig.apiToken,
+            'Accept': 'application/json'
+        }
+    }).then(checkResponse).then(function (response) {
+    }).then(function () {
+        MainActions.addToast(label +' tag deleted!');
+        ProjectActions.deleteTagSuccess(fileId)
+    }).catch(function (ex) {
+        MainActions.addToast('Failed to delete '+ label);
+        ProjectActions.handleErrors(ex)
+    });
+};
+
+ProjectActions.search.preEmit = function (text, id) {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT+ id +'/children?name_contains='+ text, {
+        method: 'get',
+        headers: {
+            'Authorization': appConfig.apiToken,
+            'Accept': 'application/json'
+        }
+    }).then(checkResponse).then(function (response) {
+        return response.json()
+    }).then(function (json) {
+        ProjectActions.getChildrenSuccess(json.results);
+        ProjectActions.setSearchText(text);
+    }).catch(function (ex) {
+        ProjectActions.handleErrors(ex)
+    })
+};
+
+ProjectActions.getTagLabels.preEmit = function () {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'tags/labels/?object_kind=dds-file', {
+        method: 'get',
+        headers: {
+            'Authorization': appConfig.apiToken,
+            'Accept': 'application/json'
+        }
+    }).then(checkResponse).then(function (response) {
+        return response.json()
+    }).then(function (json) {
+        ProjectActions.getTagLabelsSuccess(json.results)
+    }).catch(function (ex) {
+        ProjectActions.handleErrors(ex)
+    })
+};
+
+
+ProjectActions.getTagAutoCompleteList.preEmit = function (text) {
+    let query = text === null ? '' : '&label_contains='+text;
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'tags/labels/?object_kind=dds-file'+ query, {
+        method: 'get',
+        headers: {
+            'Authorization': appConfig.apiToken,
+            'Accept': 'application/json'
+        }
+    }).then(checkResponse).then(function (response) {
+        return response.json()
+    }).then(function (json) {
+        ProjectActions.getTagAutoCompleteListSuccess(json.results)
+    }).catch(function (ex) {
+        ProjectActions.handleErrors(ex)
+    })
+};
+
+ProjectActions.getTags.preEmit = function (id, kind) {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'tags/' + kind +'/'+ id, {
+        method: 'get',
+        headers: {
+            'Authorization': appConfig.apiToken,
+            'Accept': 'application/json'
+        }
+    }).then(checkResponse).then(function (response) {
+        return response.json()
+    }).then(function (json) {
+        ProjectActions.getTagsSuccess(json.results)
+    }).catch(function (ex) {
+        ProjectActions.handleErrors(ex)
+    })
+};
+
 ProjectActions.getFileVersions.preEmit = function (id) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'files/' + id + '/versions', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FILE + id + '/versions', {
         method: 'get',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -124,7 +276,7 @@ ProjectActions.getFileVersions.preEmit = function (id) {
 };
 
 ProjectActions.addFileVersion.preEmit = function (uploadId, label, fileId) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'files/' + fileId, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FILE + fileId, {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -143,13 +295,14 @@ ProjectActions.addFileVersion.preEmit = function (uploadId, label, fileId) {
         ProjectActions.addFileVersionSuccess(fileId, uploadId)
     }).catch(function (ex) {
         MainActions.addToast('Failed to Create New Version');
-        ProjectActions.handleErrors(ex)
+        ProjectActions.uploadError(uploadId, label);
+        ProjectActions.handleErrors(ex);
     });
 };
 
 
 ProjectActions.deleteVersion.preEmit = function (id) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'file_versions/' + id, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FILE_VERSION + id, {
         method: 'delete',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -166,7 +319,7 @@ ProjectActions.deleteVersion.preEmit = function (id) {
 };
 
 ProjectActions.editVersion.preEmit = function (id, label) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'file_versions/' + id, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FILE_VERSION + id, {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -187,7 +340,7 @@ ProjectActions.editVersion.preEmit = function (id, label) {
 };
 
 ProjectActions.addAgent.preEmit = function (name, desc, repo) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'software_agents/', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.AGENT, {
         method: 'post',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -210,7 +363,7 @@ ProjectActions.addAgent.preEmit = function (name, desc, repo) {
 };
 
 ProjectActions.editAgent.preEmit = function (id, name, desc, repo) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'software_agents/' + id, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.AGENT + id, {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -234,7 +387,7 @@ ProjectActions.editAgent.preEmit = function (id, name, desc, repo) {
 };
 
 ProjectActions.deleteAgent.preEmit = function (id) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'software_agents/' + id, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.AGENT + id, {
         method: 'delete',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -251,7 +404,7 @@ ProjectActions.deleteAgent.preEmit = function (id) {
 };
 
 ProjectActions.loadAgents.preEmit = function () {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'software_agents/', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.AGENT, {
         method: 'get',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -267,7 +420,7 @@ ProjectActions.loadAgents.preEmit = function () {
 };
 
 ProjectActions.createAgentKey.preEmit = function (id) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'software_agents/' + id + '/api_key', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.AGENT + id + '/api_key', {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -285,7 +438,7 @@ ProjectActions.createAgentKey.preEmit = function (id) {
 };
 
 ProjectActions.getAgentKey.preEmit = (id) => {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'software_agents/' + id + '/api_key', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.AGENT + id + '/api_key', {
         method: 'get',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -302,7 +455,7 @@ ProjectActions.getAgentKey.preEmit = (id) => {
 };
 
 ProjectActions.getAgentApiToken.preEmit = function (agentKey, userKey, data) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'software_agents/api_token', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.AGENT + 'api_token', {
         method: 'post',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -319,7 +472,7 @@ ProjectActions.getAgentApiToken.preEmit = function (agentKey, userKey, data) {
     })
 };
 
-ProjectActions.getUser.preEmit = () => {
+ProjectActions.getUser.preEmit = (id) => {
     fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'current_user', {
         method: 'get',
         headers: {
@@ -330,7 +483,25 @@ ProjectActions.getUser.preEmit = () => {
         .then(function (response) {
             return response.json()
         }).then(function (json) {
-            ProjectActions.getUserSuccess(json)
+            ProjectActions.getUserSuccess(json, id)
+        })
+        .catch(function (ex) {
+            ProjectActions.handleErrors(ex)
+        });
+};
+
+ProjectActions.getPermissions.preEmit = (id, userId) => {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT + id + '/permissions/' + userId, {
+        method: 'get',
+        headers: {
+            'Authorization': appConfig.apiToken,
+            'Accept': 'application/json'
+        }
+    })
+        .then(function (response) {
+            return response.json()
+        }).then(function (json) {
+            ProjectActions.getPermissionsSuccess(json)
         })
         .catch(function (ex) {
             ProjectActions.handleErrors(ex)
@@ -338,7 +509,7 @@ ProjectActions.getUser.preEmit = () => {
 };
 
 ProjectActions.getUserKey.preEmit = () => {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'current_user/api_key', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.CURRENT_USER + 'api_key', {
         method: 'get',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -356,7 +527,7 @@ ProjectActions.getUserKey.preEmit = () => {
 };
 
 ProjectActions.createUserKey.preEmit = function (id) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'current_user/api_key', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.CURRENT_USER + 'api_key', {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -374,7 +545,7 @@ ProjectActions.createUserKey.preEmit = function (id) {
 };
 
 ProjectActions.deleteUserKey.preEmit = function () {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'current_user/api_key', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.CURRENT_USER + 'api_key', {
         method: 'delete',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -391,7 +562,7 @@ ProjectActions.deleteUserKey.preEmit = function () {
 };
 
 ProjectActions.getUsageDetails.preEmit = function () {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'current_user/usage', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.CURRENT_USER + 'usage', {
         method: 'get',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -407,7 +578,7 @@ ProjectActions.getUsageDetails.preEmit = function () {
 };
 
 ProjectActions.loadProjects.preEmit = function () {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT, {
         method: 'get',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -422,24 +593,8 @@ ProjectActions.loadProjects.preEmit = function () {
     })
 };
 
-ProjectActions.loadProjectChildren.preEmit = function (id) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/' + id + '/children', {
-        method: 'get',
-        headers: {
-            'Authorization': appConfig.apiToken,
-            'Accept': 'application/json'
-        }
-    }).then(checkResponse).then(function (response) {
-        return response.json()
-    }).then(function (json) {
-        ProjectActions.loadProjectChildrenSuccess(json.results)
-    }).catch(function (ex) {
-        ProjectActions.handleErrors(ex)
-    })
-};
-
 ProjectActions.showDetails.preEmit = function (id) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/' + id, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT + id, {
         method: 'get',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -455,7 +610,7 @@ ProjectActions.showDetails.preEmit = function (id) {
 };
 
 ProjectActions.addProject.preEmit = function (name, desc) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT, {
         method: 'post',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -477,7 +632,7 @@ ProjectActions.addProject.preEmit = function (name, desc) {
 };
 
 ProjectActions.deleteProject.preEmit = function (id) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/' + id, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT + id, {
         method: 'delete',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -494,7 +649,7 @@ ProjectActions.deleteProject.preEmit = function (id) {
 };
 
 ProjectActions.editProject.preEmit = function (id, name, desc) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/' + id, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT + id, {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -516,8 +671,8 @@ ProjectActions.editProject.preEmit = function (id, name, desc) {
     });
 };
 
-ProjectActions.loadFolderChildren.preEmit = function (id) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'folders/' + id + '/children', {
+ProjectActions.getChildren.preEmit = function (id, path) {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + path + id + '/children', {
         method: 'get',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -526,14 +681,14 @@ ProjectActions.loadFolderChildren.preEmit = function (id) {
     }).then(checkResponse).then(function (response) {
         return response.json()
     }).then(function (json) {
-        ProjectActions.loadFolderChildrenSuccess(json.results)
+        ProjectActions.getChildrenSuccess(json.results)
     }).catch(function (ex) {
         ProjectActions.handleErrors(ex)
     })
 };
 
 ProjectActions.addFolder.preEmit = function (id, parentKind, name) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'folders/', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FOLDER, {
         method: 'post',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -558,7 +713,7 @@ ProjectActions.addFolder.preEmit = function (id, parentKind, name) {
 };
 
 ProjectActions.deleteFolder.preEmit = function (id, parentId, parentKind) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'folders/' + id, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FOLDER + id, {
         method: 'delete',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -568,7 +723,7 @@ ProjectActions.deleteFolder.preEmit = function (id, parentId, parentKind) {
     }).then(checkResponse).then(function (response) {
     }).then(function () {
         MainActions.addToast('Folder(s) Deleted!');
-        ProjectActions.deleteFolderSuccess(parentId, parentKind)
+        ProjectActions.deleteItemSuccess(parentId, parentKind)
     }).catch(function (ex) {
         MainActions.addToast('Folder Deleted Failed!');
         ProjectActions.handleErrors(ex)
@@ -576,7 +731,7 @@ ProjectActions.deleteFolder.preEmit = function (id, parentId, parentKind) {
 };
 
 ProjectActions.editFolder.preEmit = function (id, name) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'folders/' + id + '/rename', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FOLDER + id + '/rename', {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -598,7 +753,7 @@ ProjectActions.editFolder.preEmit = function (id, name) {
 };
 
 ProjectActions.moveFolder.preEmit = function (id, destination, destinationKind) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'folders/' + id + '/move', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FOLDER + id + '/move', {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -622,7 +777,7 @@ ProjectActions.moveFolder.preEmit = function (id, destination, destinationKind) 
 };
 
 ProjectActions.deleteFile.preEmit = function (id, parentId, parentKind) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'files/' + id, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FILE + id, {
         method: 'delete',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -631,7 +786,7 @@ ProjectActions.deleteFile.preEmit = function (id, parentId, parentKind) {
     }).then(checkResponse).then(function (response) {
     }).then(function () {
         MainActions.addToast('File(s) Deleted!');
-        ProjectActions.deleteFileSuccess(parentId, parentKind)
+        ProjectActions.deleteItemSuccess(parentId, parentKind)
     }).catch(function (ex) {
         MainActions.addToast('Failed to Delete File!');
         ProjectActions.handleErrors(ex)
@@ -639,7 +794,7 @@ ProjectActions.deleteFile.preEmit = function (id, parentId, parentKind) {
 };
 
 ProjectActions.editFile.preEmit = function (id, fileName) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'files/' + id + '/rename', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FILE + id + '/rename', {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -660,7 +815,7 @@ ProjectActions.editFile.preEmit = function (id, fileName) {
 };
 
 ProjectActions.moveFile.preEmit = function (id, destination, destinationKind) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'files/' + id + '/move', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FILE + id + '/move', {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -701,7 +856,7 @@ ProjectActions.getEntity.preEmit = (id, kind, requester) => {
 };
 
 ProjectActions.getProjectMembers.preEmit = (id) => {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/' + id + '/permissions', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT + id + '/permissions', {
         method: 'get',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -752,7 +907,8 @@ ProjectActions.getUserId.preEmit = (fullName, id, role) => {
 };
 
 ProjectActions.addProjectMember.preEmit = (id, userId, role, name) => {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/' + id + '/permissions/' + userId, {
+    let newRole = role.replace('_',' ');
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT + id + '/permissions/' + userId, {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -764,7 +920,7 @@ ProjectActions.addProjectMember.preEmit = (id, userId, role, name) => {
     }).then(checkResponse).then(function (response) {
         return response.json()
     }).then(function (json) {
-        MainActions.addToast(name + ' ' + 'has been added to this project');
+        MainActions.addToast(name + ' ' + 'has been added as a ' +newRole+ ' to this project');
         ProjectActions.addProjectMemberSuccess(id)
     })
         .catch(function (ex) {
@@ -774,7 +930,7 @@ ProjectActions.addProjectMember.preEmit = (id, userId, role, name) => {
 };
 
 ProjectActions.deleteProjectMember.preEmit = (id, userId, userName) => {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/' + id + '/permissions/' + userId, {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT + id + '/permissions/' + userId, {
         method: 'delete',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -807,7 +963,7 @@ ProjectActions.getDownloadUrl.preEmit = function (id, kind) {
     })
 };
 
-ProjectActions.startUpload.preEmit = function (projId, blob, parentId, parentKind, label, fileId) {
+ProjectActions.startUpload.preEmit = function (projId, blob, parentId, parentKind, label, fileId, tags) {
     let chunkNum = 0,
         fileName = blob.name,
         contentType = blob.type,
@@ -824,6 +980,7 @@ ProjectActions.startUpload.preEmit = function (projId, blob, parentId, parentKin
     let details = {
         name: fileName,
         label: label,
+        tags: tags,
         fileId: fileId,
         size: SIZE,
         blob: blob,
@@ -852,7 +1009,7 @@ ProjectActions.startUpload.preEmit = function (projId, blob, parentId, parentKin
     }
     fileReader.onload = function (event, files) {
         // create project upload
-        fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'projects/' + projId + '/uploads', {
+        fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.PROJECT + projId +'/'+ Path.UPLOAD, {
             method: 'post',
             headers: {
                 'Authorization': appConfig.apiToken,
@@ -861,7 +1018,7 @@ ProjectActions.startUpload.preEmit = function (projId, blob, parentId, parentKin
             body: JSON.stringify({
                 'name': fileName,
                 'content_type': contentType,
-                'size': SIZE,
+                'size': SIZE
             })
         }).then(checkResponse).then(function (response) {
             return response.json()
@@ -887,7 +1044,7 @@ ProjectActions.getChunkUrl.preEmit = function (uploadId, chunkBlob, chunkNum, si
         var arrayBuffer = event.target.result;
         var wordArray = CryptoJS.lib.WordArray.create(arrayBuffer);
         var md5crc = CryptoJS.MD5(wordArray).toString(CryptoJS.enc.Hex);
-        fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'uploads/' + uploadId + '/chunks', {
+        fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.UPLOAD + uploadId + '/chunks', {
             method: 'put',
             headers: {
                 'Authorization': appConfig.apiToken,
@@ -945,15 +1102,21 @@ function uploadChunk(uploadId, presignedUrl, chunkBlob, size, parentId, parentKi
 
     xhr.open('PUT', presignedUrl, true);
     xhr.send(chunkBlob);
-};
+}
 
-ProjectActions.allChunksUploaded.preEmit = function (uploadId, parentId, parentKind, fileName, label, fileId) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'uploads/' + uploadId + '/complete', {
+ProjectActions.allChunksUploaded.preEmit = function (uploadId, parentId, parentKind, fileName, label, fileId, hash) {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.UPLOAD + uploadId + '/complete', {
         method: 'put',
         headers: {
             'Authorization': appConfig.apiToken,
             'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+            'hash': {
+                'value': hash,
+                'algorithm': 'md5'
+            }
+        })
     }).then(checkResponse).then(function (response) {
         return response.json()
     }).then(function (json) {
@@ -968,7 +1131,7 @@ ProjectActions.allChunksUploaded.preEmit = function (uploadId, parentId, parentK
 };
 
 ProjectActions.addFile.preEmit = function (uploadId, parentId, parentKind, fileName) {
-    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + 'files/', {
+    fetch(urlGen.routes.baseUrl + urlGen.routes.apiPrefix + Path.FILE, {
         method: 'post',
         headers: {
             'Authorization': appConfig.apiToken,
@@ -981,14 +1144,13 @@ ProjectActions.addFile.preEmit = function (uploadId, parentId, parentKind, fileN
             },
             'upload': {
                 'id': uploadId
-            },
-            'label': 'Initial Version'
+            }
         })
     }).then(checkResponse).then(function (response) {
         return response.json()
     }).then(function (json) {
         MainActions.addToast(fileName + ' uploaded successfully');
-        ProjectActions.addFileSuccess(parentId, parentKind, uploadId)
+        ProjectActions.addFileSuccess(parentId, parentKind, uploadId, json.id)
     }).catch(function (ex) {
         MainActions.addToast('Failed to upload ' + fileName + '!');
         ProjectActions.handleErrors(ex)
@@ -1009,9 +1171,9 @@ ProjectActions.hashFile.preEmit = function (file, id) {
 
     function webWorkerOnMessage(e) {
         function arrayBufferToWordArray(ab) {
-            var i8a = new Uint8Array(ab);
-            var a = [];
-            for (var i = 0; i < i8a.length; i += 4) {
+            let i8a = new Uint8Array(ab);
+            let a = [];
+            for (let i = 0; i < i8a.length; i += 4) {
                 a.push(i8a[i] << 24 | i8a[i + 1] << 16 | i8a[i + 2] << 8 | i8a[i + 3]);
             }
             return CryptoJS.lib.WordArray.create(a, i8a.length);
@@ -1032,12 +1194,13 @@ ProjectActions.hashFile.preEmit = function (file, id) {
     window.URL = window.URL || window.webkitURL;
 
 // "Server response"
-    var response =
-        "importScripts('https://crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/md5.js');" +
-        "var md5, cryptoType;" +
+    let assetPath = location.protocol + '//' + location.host + '/lib/md5.js';
+    let response =
+        "importScripts("+"'"+assetPath+"'"+");" +
+        "let md5, cryptoType;" +
         "self.onmessage = " + webWorkerOnMessage.toString();
 
-    var blob;
+    let blob;
     try {
         blob = new Blob([response], {type: 'application/javascript'});
     } catch (e) { // Backwards-compatibility
@@ -1047,23 +1210,23 @@ ProjectActions.hashFile.preEmit = function (file, id) {
         blob = blob.getBlob();
     }
 
-    var worker = new Worker(URL.createObjectURL(blob));
-    var chunksize = 5242880;
-    var f = file.blob; // FileList object
-    var i = 0,
+    let worker = new Worker(URL.createObjectURL(blob));
+    let chunksize = 5242880;
+    let f = file.blob; // FileList object
+    let i = 0,
         chunks = Math.ceil(f.size / chunksize),
         chunkTasks = [],
         startTime = (new Date()).getTime();
-    worker.onmessage = function (e) {
+        worker.onmessage = function (e) {
         // create callback
-        for (var j = 0; j < chunks; j++) {
+        for (let j = 0; j < chunks; j++) {
             (function (j, f) {
                 chunkTasks.push(function (next) {
-                    var blob = f.slice(j * chunksize, Math.min((j + 1) * chunksize, f.size));
-                    var reader = new FileReader();
+                    let blob = f.slice(j * chunksize, Math.min((j + 1) * chunksize, f.size));
+                    let reader = new FileReader();
 
                     reader.onload = function (e) {
-                        var chunk = e.target.result;
+                        let chunk = e.target.result;
                         worker.onmessage = function (e) {
                             // update callback
                             next();
@@ -1077,17 +1240,12 @@ ProjectActions.hashFile.preEmit = function (file, id) {
         series(chunkTasks, function () {
             worker.onmessage = function (e) {
                 // finish callback
-                // TODO: Post hash in store?????
                 ProjectActions.postHash({id: e.data.id, hash: e.data.hash});
             };
             worker.postMessage({type: "finish", id: id});
         });
     };
     worker.postMessage({type: "create"});
-};
-
-ProjectActions.postHash.preEmit = function (hashObj){ //Todo: Make proper preemit function w/fetch call !!!!!!!!!!!!
-    //console.log('File ID:' + hashObj.id + ' ' + 'Hash:' + hashObj.hash);
 };
 
 function checkResponse(response) {

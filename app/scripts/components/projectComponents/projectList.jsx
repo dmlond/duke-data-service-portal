@@ -1,15 +1,12 @@
 import React from 'react';
-import { RouteHandler, Link } from 'react-router';
+import { RouteHandler } from 'react-router';
 import ProjectActions from '../../actions/projectActions';
 import AddProjectModal from '../projectComponents/addProjectModal.jsx';
-import AccountOverview from '../../components/globalComponents/accountOverview.jsx';
-import Header from '../../components/globalComponents/header.jsx';
 import Loaders from '../../components/globalComponents/loaders.jsx';
 import urlGen from '../../../util/urlGen.js';
 import Card from 'material-ui/lib/card/card';
 import CardText from 'material-ui/lib/card/card-text';
 import CardTitle from 'material-ui/lib/card/card-title';
-import LinearProgress from 'material-ui/lib/linear-progress';
 
 class ProjectList extends React.Component {
 
@@ -31,7 +28,7 @@ class ProjectList extends React.Component {
                             <CardTitle title={project.name} subtitle={'ID: ' + project.id} titleColor="#424242" style={styles.cardTitle}/>
                         </a>
                         <CardText>
-                            <span className="mdl-color-text--grey-900">Description:</span>{project.description.length > 300 ? ' ' + project.description.substring(0,300)+'...' : ' ' + project.description }
+                            <span className="mdl-color-text--grey-900">Description:</span>{ project.description.length > 300 ? ' ' + project.description.substring(0,300)+'...' : ' ' + project.description }
                         </CardText>
                     </Card>
                 );

@@ -147,6 +147,7 @@ class AgentOptionsMenu extends React.Component {
             <div>
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="Are you sure you want to delete this software agent?"
                     autoScrollBodyContent={true}
                     actions={deleteActions}
@@ -165,6 +166,7 @@ class AgentOptionsMenu extends React.Component {
                 </Dialog>
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="Update Software Agent Details"
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}
@@ -174,6 +176,8 @@ class AgentOptionsMenu extends React.Component {
                     <form action="#" id="newAgentForm">
                         <TextField
                             style={styles.textStyles}
+                            autoFocus={true}
+                            onFocus={this.handleFloatingErrorInputChange.bind(this)}
                             hintText="Software Agent Name"
                             defaultValue={agName}
                             errorText={this.state.floatingErrorText}
@@ -204,6 +208,7 @@ class AgentOptionsMenu extends React.Component {
                 </Dialog>
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="Agent Secret Key"
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}
@@ -225,6 +230,7 @@ class AgentOptionsMenu extends React.Component {
                 </Dialog>
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="Your New Agent Secret Key"
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}
@@ -245,6 +251,7 @@ class AgentOptionsMenu extends React.Component {
                 </Dialog>
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="User Secret Key"
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}
@@ -267,6 +274,7 @@ class AgentOptionsMenu extends React.Component {
                 </Dialog>
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="Your New User Key"
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}
@@ -287,6 +295,7 @@ class AgentOptionsMenu extends React.Component {
                 </Dialog>
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="Your API Token"
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}
@@ -307,6 +316,7 @@ class AgentOptionsMenu extends React.Component {
                 </Dialog>
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="Are you sure you want to delete this user key?"
                     autoScrollBodyContent={true}
                     actions={deleteKeyActions}
@@ -455,16 +465,24 @@ class AgentOptionsMenu extends React.Component {
     handleCopyButton() {
         let copyTextArea = document.querySelector('#keyText');
         copyTextArea.select();
-        let clipText = document.execCommand('copy');
-        MainActions.addToast('Key copied to clipboard!');
-        ProjectActions.closeModal();
-        this.setState({
-            apiKeyOpen: false,
-            newApiKeyOpen: false,
-            userKeyOpen: false,
-            newUserKeyOpen: false
-        });
+        var successful = document.execCommand('copy');
+        var msg = successful ? 'successful' : 'unsuccessful';
+        if(msg === 'successful') {
+            MainActions.addToast('Key copied to clipboard!');
+            this.setState({
+                apiKeyOpen: false,
+                newApiKeyOpen: false,
+                userKeyOpen: false,
+                newUserKeyOpen: false
+            });
+        }
+        if(msg === 'unsuccessful'){
+            MainActions.addToast('Failed copying key to clipboard!');
+            alert("Automatic copying to clipboard is not supported by Safari browsers: Manually copy the key by" +
+                " using CMD+C,");
+        }
     };
+
 
     handleClose() {
         ProjectActions.closeModal();
@@ -500,7 +518,8 @@ var styles = {
     },
     keyModal: {
         width: 300,
-        textAlign: 'left'
+        textAlign: 'left',
+        fontFamily: 'monospace'
     },
     selectStyle: {
         textAlign: 'left'

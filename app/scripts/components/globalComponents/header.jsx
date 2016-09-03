@@ -1,5 +1,5 @@
 import React from 'react';
-import { RouteHandler, Link } from 'react-router';
+import { RouteHandler } from 'react-router';
 import ProjectStore from '../../stores/projectStore';
 import MainStore from '../../stores/mainStore';
 import MainActions from '../../actions/mainActions';
@@ -7,7 +7,6 @@ import CurrentUser from './currentUser.jsx';
 import Divider from 'material-ui/lib/divider';
 import Popover from 'material-ui/lib/popover/popover';
 import PopoverAnimationFromTop from 'material-ui/lib/popover/popover-animation-from-top';
-import RaisedButton from 'material-ui/lib/raised-button';
 
 class Header extends React.Component {
 
@@ -56,9 +55,12 @@ class Header extends React.Component {
                                 <img src="images/dukeDSVertical.png" style={styles.logo}/>}
                         </div>
                         <div className="right">
-                            <a className="external" onTouchTap={this.handleTouchTap.bind(this)} style={{cursor: 'pointer', color: '#FFFFFF'}}>
+                            <a className="external" onTouchTap={this.handleTouchTap.bind(this)} style={styles.userOptions}>
                                 <CurrentUser {...this.props} />
                             </a>
+                            <a className="external" href="https://medium.com/@dukedataservice"
+                               target="_blank" rel="noopener noreferrer"
+                               style={styles.blogLink}>Duke DS Blog</a>
                             { popover }
                         </div>
                     </div>
@@ -81,17 +83,25 @@ class Header extends React.Component {
     }
 
     handleLogout() {
+        this.props.appRouter.transitionTo('/login');
         MainStore.handleLogout()
     }
 }
 
 var styles = {
+    blogLink: {
+        color: '#fff',
+        fontSize: '.6em',
+        position: 'absolute',
+        top: 42,
+        right: 13
+    },
     logo: {
         width: '40%',
         maxWidth: '40%',
         minWidth: 58,
         minHeight: 46,
-        marginTop: 12,
+        marginTop: -5,
         marginLeft: 22
     },
     logoDiv: {
@@ -125,6 +135,10 @@ var styles = {
         margin: '14px 10px 16px 10px',
         fontSize: '1.2em',
         fontWeight: 100
+    },
+    userOptions: {
+        cursor: 'pointer',
+        color: '#FFF'
     }
 };
 

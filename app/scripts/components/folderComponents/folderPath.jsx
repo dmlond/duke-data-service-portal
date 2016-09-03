@@ -1,19 +1,12 @@
 import React from 'react'
-import { Link } from 'react-router';
-import ProjectActions from '../../actions/projectActions';
-import ProjectStore from '../../stores/projectStore';
 import FolderOptionsMenu from './folderOptionsMenu.jsx';
 import UploadModal from '../globalComponents/uploadModal.jsx';
-import urlGen from '../../../util/urlGen.js';
+import UploadManager from '../globalComponents/uploadManager.jsx';
 import BaseUtils from '../../../util/baseUtils';
 import Card from 'material-ui/lib/card/card';
 
 class FolderPath extends React.Component {
-
-    constructor(props) {
-        super(props);
-    }
-
+    
     render() {
         let id = this.props.params.id;
         let entityObj = this.props.entityObj ? this.props.entityObj : null;
@@ -22,14 +15,22 @@ class FolderPath extends React.Component {
         let parentKind = this.props.entityObj ? this.props.entityObj.parent.kind : null;
         let parentId = this.props.entityObj ? this.props.entityObj.parent.id : null;
         let name = this.props.entityObj ? this.props.entityObj.name : null;
+        let prjPrm = this.props.projPermissions && this.props.projPermissions !== undefined ? this.props.projPermissions : null;
+        
+        let uploadMdl = null;
+        let optionsMenu = null;
+        if (prjPrm !== null) {
+            uploadMdl = prjPrm === 'viewOnly' || prjPrm === 'flDownload' ? null : <UploadManager {...this.props}/>;
+            optionsMenu = prjPrm === 'prjCrud' || prjPrm === 'flCrud' ? optionsMenu = <FolderOptionsMenu {...this.props} /> : null;
+        }
 
         return (
             <Card className="project-container group mdl-color--white mdl-shadow--2dp content mdl-color-text--grey-800"
                  style={styles.container}>
-                <UploadModal {...this.props} />
+                { uploadMdl }
                 <div className="mdl-cell mdl-cell--12-col mdl-color-text--grey-800">
                     <div style={styles.menuIcon}>
-                        <FolderOptionsMenu {...this.props} />
+                        { optionsMenu }
                     </div>
                     <div className="mdl-cell mdl-cell--12-col mdl-color-text--grey-800" style={styles.arrow}>
                         <a href={'/#/' + BaseUtils.getUrlPath(parentKind) + parentId }
@@ -42,7 +43,7 @@ class FolderPath extends React.Component {
                         <h4>{ projectName }</h4>
                     </div>
                     <div className="mdl-cell mdl-cell--12-col mdl-color-text--grey-600" style={styles.breadcrumbs}>
-                        <h5><i className="material-icons" style={styles.folderIcon}>folder_open</i>{ name }</h5>
+                        <h5 style={{marginTop: 18}}><i className="material-icons" style={styles.folderIcon}>folder_open</i>{ name }</h5>
                     </div>
                     <div className="mdl-cell mdl-cell--12-col mdl-color-text--grey-600" style={styles.breadcrumbs}>
                         <h6>{ BaseUtils.getFilePath(ancestors) + name }</h6>
@@ -55,11 +56,9 @@ class FolderPath extends React.Component {
 
 var styles = {
     container: {
-        marginTop: 30,
-        position: 'relative',
+        marginTop: 40,
         overflow: 'visible',
-        padding: '10px 0px 10px 0px',
-        minHeight: 160
+        padding: '10px 0px 10px 0px'
     },
     arrow: {
         textAlign: 'left'
@@ -73,17 +72,10 @@ var styles = {
         marginTop: -30,
         float: 'left'
     },
-    folderName: {
-        fontSize: 14
-    },
     folderIcon: {
         fontSize: 36,
         verticalAlign: -7,
         marginRight: 10
-    },
-    moreIcon: {
-        fontSize: 36,
-        verticalAlign: -11
     },
     backIcon: {
         fontSize: 24,
@@ -93,13 +85,6 @@ var styles = {
         float: 'right',
         marginTop: 32,
         marginRight: -5
-    },
-    floatingButton: {
-        position: 'absolute',
-        top: -20,
-        right: '2%',
-        zIndex: '2',
-        color: '#ffffff'
     }
 };
 

@@ -4,9 +4,9 @@ import ProjectStore from '../../stores/projectStore';
 import TextField from 'material-ui/lib/text-field';
 import Dialog from 'material-ui/lib/dialog';
 import FlatButton from 'material-ui/lib/flat-button';
+import IconButton from 'material-ui/lib/icon-button';
 import IconMenu from 'material-ui/lib/menus/icon-menu';
 import MenuItem from 'material-ui/lib/menus/menu-item';
-import IconButton from 'material-ui/lib/icon-button';
 
 class VersionsOptionsMenu extends React.Component {
 
@@ -19,6 +19,23 @@ class VersionsOptionsMenu extends React.Component {
     }
 
     render() {
+        let prjPrm = this.props.projPermissions && this.props.projPermissions !== undefined ? this.props.projPermissions : null;
+        let menu = null;
+        if (prjPrm !== null) {
+            if (prjPrm === 'flUpload') {
+                menu = <MenuItem primaryText="Edit Version Label" leftIcon={<i className="material-icons">mode_edit</i>}
+                                 onTouchTap={this.handleTouchTapEdit.bind(this)}/>;
+            }
+            if (prjPrm === 'prjCrud' || prjPrm === 'flCrud') {
+                menu = <span>
+                        <MenuItem primaryText="Delete Version" leftIcon={<i className="material-icons">delete</i>}
+                                  onTouchTap={this.handleTouchTapDelete.bind(this)}/>
+                        <MenuItem primaryText="Edit Version Label"
+                                  leftIcon={<i className="material-icons">mode_edit</i>}
+                                  onTouchTap={this.handleTouchTapEdit.bind(this)}/>
+                </span>
+            }
+        }
         const deleteActions = [
             <FlatButton
                 label="CANCEL"
@@ -48,7 +65,8 @@ class VersionsOptionsMenu extends React.Component {
             <div>
                 <Dialog
                     style={styles.dialogStyles}
-                    title="Are you sure you want to delete this file?"
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
+                    title="Are you sure you want to delete this file version?"
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}
                     actions={deleteActions}
@@ -58,6 +76,7 @@ class VersionsOptionsMenu extends React.Component {
                 </Dialog>
                 <Dialog
                     style={styles.dialogStyles}
+                    contentStyle={this.props.screenSize.width < 580 ? {width: '100%'} : {}}
                     title="Update Version Label"
                     autoDetectWindowHeight={true}
                     autoScrollBodyContent={true}
@@ -67,6 +86,8 @@ class VersionsOptionsMenu extends React.Component {
                     <form action="#" id="editVersionForm">
                         <TextField
                             style={styles.textStyles}
+                            autoFocus={true}
+                            onFocus={this.handleFloatingErrorInputChange.bind(this)}
                             hintText="Version Label"
                             defaultValue={labelText}
                             errorText={this.state.floatingErrorText}
@@ -81,14 +102,11 @@ class VersionsOptionsMenu extends React.Component {
                     iconButtonElement={<IconButton iconClassName="material-icons" style={{marginRight: -10}}>more_vert</IconButton>}
                     anchorOrigin={{horizontal: 'right', vertical: 'top'}}
                     targetOrigin={{horizontal: 'right', vertical: 'top'}}>
-                    <MenuItem primaryText="Delete Version" leftIcon={<i className="material-icons">delete</i>}
-                              onTouchTap={this.handleTouchTapDelete.bind(this)}/>
-                    <MenuItem primaryText="Edit Version Label" leftIcon={<i className="material-icons">mode_edit</i>}
-                              onTouchTap={this.handleTouchTapEdit.bind(this)}/>
+                    { menu }
                 </IconMenu>
             </div>
         );
-    };
+    }
 
     handleTouchTapDelete() {
         this.setState({deleteOpen: true})
@@ -103,7 +121,7 @@ class VersionsOptionsMenu extends React.Component {
         let parentId = this.props.entityObj ? this.props.entityObj.file.id : null;
         ProjectActions.deleteVersion(id);
         this.setState({deleteOpen: false});
-        setTimeout(()=>this.props.appRouter.transitionTo('/file' +'/'+ parentId), 500)
+        setTimeout(()=>this.props.appRouter.transitionTo('/file' + '/' + parentId), 500)
     }
 
 

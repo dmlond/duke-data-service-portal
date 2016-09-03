@@ -1,11 +1,9 @@
 import React, { PropTypes } from 'react';
 const { object, bool, array, string } = PropTypes;
-import { Link } from 'react-router';
 import ProjectActions from '../actions/projectActions';
 import ProjectStore from '../stores/projectStore';
 import AgentOptionsMenu from '../components/globalComponents/agentOptionsMenu.jsx';
 import Loaders from '../components/globalComponents/loaders.jsx';
-import BaseUtils from '../../util/baseUtils.js';
 import urlGen from '../../util/urlGen.js';
 import Card from '../../../node_modules/material-ui/lib/card/card';
 
@@ -66,10 +64,10 @@ class Agent extends React.Component {
                         <i className="material-icons"
                            style={styles.backIcon}>keyboard_backspace</i>Back</a>
                 </div>
-                <div className="mdl-cell mdl-cell--6-col mdl-cell--4-col-tablet mdl-cell--4-col-phone">
+                <div className="mdl-cell mdl-cell--9-col mdl-cell--8-col-tablet mdl-cell--4-col-phone">
                     <p className="mdl-color-text--grey-800" style={styles.title}><i className="material-icons" style={styles.icon}>laptop_mac</i>{name}</p>
                 </div>
-                <div className="mdl-cell mdl-cell--6-col mdl-cell--8-col-tablet mdl-color-text--grey-600">
+                <div className="mdl-cell mdl-cell--9-col mdl-cell--8-col-tablet mdl-color-text--grey-600">
                     <p style={styles.subTitle}>{ description }</p>
                 </div>
                 <div className="mdl-cell mdl-cell--12-col content-block" style={styles.list}>

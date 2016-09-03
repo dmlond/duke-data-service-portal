@@ -1,7 +1,7 @@
 import Reflux from 'reflux';
 import ProjectActions from '../actions/projectActions';
 import MainActions from '../actions/mainActions';
-import StatusEnum from '../enum.js';
+import { StatusEnum, Path } from '../enum';
 
 var ProjectStore = Reflux.createStore({
 
@@ -11,14 +11,18 @@ var ProjectStore = Reflux.createStore({
         this.agentKey = {};
         this.agentApiToken = {};
         this.audit = {};
+        this.batchFiles = [];
+        this.batchFolders = [];
         this.children = [];
         this.currentUser = {};
         this.destination = null;
         this.destinationKind = null;
-        this.entityObj = {};
+        this.device = {};
+        this.entityObj = null;
         this.error = {};
         this.errorModal = false;
         this.filesChecked = [];
+        this.fileHashes = [];
         this.foldersChecked = [];
         this.fileVersions = [];
         this.itemsSelected = null;
@@ -26,16 +30,104 @@ var ProjectStore = Reflux.createStore({
         this.moveModal = false;
         this.moveToObj = {};
         this.moveErrorModal = false;
+        this.objectTags = [];
+        this.openTagManager = false;
+        this.openUploadManager = false;
         this.parent = {};
         this.projects = [];
         this.project = {};
+        this.projPermissions = null;
         this.projectMembers = [];
+        this.screenSize = {};
+        this.searchText = '';
         this.showBatchOps = false;
+        this.tagLabels = [];
         this.uploadCount = [];
         this.uploads = {};
         this.users = [];
         this.userKey = {};
         this.versionModal = false;
+    },
+
+    getScreenSize(height, width) {
+        this.screenSize.height = height;
+        this.screenSize.width = width;
+        this.trigger({
+            screenSize: this.screenSize
+        })
+    },
+
+    toggleUploadManager() {
+        this.openUploadManager = !this.openUploadManager;
+        this.trigger({
+            openUploadManager: this.openUploadManager
+        })
+    },
+
+    toggleTagManager() {
+        this.openTagManager = !this.openTagManager;
+        this.trigger({
+            openTagManager: this.openTagManager
+        })
+    },
+
+    addNewTagSuccess(fileId) {
+        ProjectActions.getTags(fileId, 'dds-file');
+    },
+
+    appendTagsSuccess(fileId) {
+        ProjectActions.getTags(fileId, 'dds-file');
+        this.showBatchOps = false;
+        this.trigger({
+            showBatchOps: this.showBatchOps
+        })
+    },
+
+    deleteTagSuccess(fileId) {
+        ProjectActions.getTags(fileId, 'dds-file');
+    },
+
+    getTagAutoCompleteListSuccess(list) {
+        this.tagAutoCompleteList = list.map((item) => {return item.label});
+        this.trigger({
+            tagAutoCompleteList: this.tagAutoCompleteList
+        })
+    },
+
+    getTagLabelsSuccess(labels) {
+        this.tagLabels = labels;
+        this.trigger({
+            tagLabels: this.tagLabels
+        })
+    },
+
+    getTagsSuccess(tags) {
+        this.objectTags = tags;
+        this.trigger({
+            objectTags: this.objectTags
+        })
+    },
+
+    getDeviceType(device) {
+        this.device = device;
+        this.trigger({
+            device: this.device
+        })
+    },
+
+    setSearchText(text) {
+        if(!text.indexOf(' ') <= 0) this.searchText = text;
+            this.trigger({
+            searchText: this.searchText,
+            itemsSelected: null,
+            showBatchOps: false
+        })
+    },
+
+    search() {
+        this.trigger({
+            loading: true
+        })
     },
 
     getFileVersions() {
@@ -253,6 +345,26 @@ var ProjectStore = Reflux.createStore({
         })
     },
 
+    setBatchItems(batchDeleteFiles, batchDeleteFolders) {
+        this.batchFiles = batchDeleteFiles;
+        this.batchFolders = batchDeleteFolders;
+        this.trigger({
+            batchFiles: this.batchFiles,
+            batchFolders: this.batchFolders
+        })
+    },
+
+    batchDeleteItems(parentId, parentKind) {
+        let files = this.batchFiles;
+        let folders = this.batchFolders;
+        for (let i = 0; i < files.length; i++) {
+            ProjectActions.deleteFile(files[i], parentId, parentKind);
+        }
+        for (let i = 0; i < folders.length; i++) {
+            ProjectActions.deleteFolder(folders[i], parentId, parentKind);
+        }
+    },
+
     handleBatch (files, folders) {
         this.filesChecked = files;
         this.foldersChecked = folders;
@@ -263,6 +375,15 @@ var ProjectStore = Reflux.createStore({
             foldersChecked: this.foldersChecked,
             itemsSelected: this.itemsSelected,
             showBatchOps: this.showBatchOps
+        })
+    },
+
+    clearSelectedItems() {
+        this.filesChecked = [];
+        this.foldersChecked = [];
+        this.trigger({
+            filesChecked: this.filesChecked,
+            foldersChecked: this.foldersChecked
         })
     },
 
@@ -283,10 +404,23 @@ var ProjectStore = Reflux.createStore({
         })
     },
 
-    getUserSuccess (json) {
+    getUserSuccess (json, id) {
         this.currentUser = json;
+        ProjectActions.getPermissions(id, json.id);
         this.trigger({
             currentUser: this.currentUser
+        });
+    },
+
+    getPermissionsSuccess (json) {
+        let id = json.auth_role.id;
+        if(id === 'project_viewer') this.projPermissions = 'viewOnly';
+        if(id === 'project_admin' || id === 'system_admin') this.projPermissions = 'prjCrud';
+        if(id === 'file_editor') this.projPermissions = 'flCrud';
+        if(id === 'file_uploader') this.projPermissions = 'flUpload';
+        if(id === 'file_downloader') this.projPermissions = 'flDownload';
+        this.trigger({
+            projPermissions: this.projPermissions
         });
     },
 
@@ -325,20 +459,6 @@ var ProjectStore = Reflux.createStore({
         })
     },
 
-    loadProjectChildren() {
-        this.trigger({
-            loading: true
-        })
-    },
-
-    loadProjectChildrenSuccess(results) {
-        this.children = results;
-        this.trigger({
-            children: this.children,
-            loading: false
-        })
-    },
-
     showDetails() {
         this.trigger({
             loading: true
@@ -350,6 +470,27 @@ var ProjectStore = Reflux.createStore({
         this.trigger({
             project: this.project,
             loading: false
+        })
+    },
+
+    deleteItemSuccess(id, parentKind) {
+        this.batchFolders.splice(0, 1);
+        this.batchFiles.splice(0, 1);
+        if(this.batchFolders.length || this.batchFiles.length) {
+            return
+        } else {
+            if (parentKind === 'dds-project') {
+                ProjectActions.getChildren(id, 'projects/');
+            } else {
+                ProjectActions.getChildren(id, 'folders/');
+            }
+        }
+        this.showBatchOps = false;
+        this.trigger({
+            batchFiles: this.batchFiles,
+            batchFolders: this.batchFolders,
+            loading: false,
+            showBatchOps: this.showBatchOps
         })
     },
 
@@ -393,13 +534,13 @@ var ProjectStore = Reflux.createStore({
         })
     },
 
-    loadFolderChildren() {
+    getChildren() {
         this.trigger({
             loading: true
         })
     },
 
-    loadFolderChildrenSuccess(results) {
+    getChildrenSuccess(results) {
         this.children = results;
         this.trigger({
             children: this.children,
@@ -413,11 +554,11 @@ var ProjectStore = Reflux.createStore({
         })
     },
 
-    addFolderSuccess(id, parentKind) { //todo: remove this and check for new children state in folder.jsx & project.jsx
+    addFolderSuccess(id, parentKind) {
         if (parentKind === 'dds-project') {
-            ProjectActions.loadProjectChildren(id);
+            ProjectActions.getChildren(id, 'projects/');
         } else {
-            ProjectActions.loadFolderChildren(id);
+            ProjectActions.getChildren(id, 'folders/');
         }
         this.trigger({
             loading: false
@@ -430,19 +571,6 @@ var ProjectStore = Reflux.createStore({
         })
     },
 
-    deleteFolderSuccess(id, parentKind) {
-        if (parentKind === 'dds-project') {
-            ProjectActions.loadProjectChildren(id);
-        } else {
-            ProjectActions.loadFolderChildren(id);
-        }
-        this.showBatchOps = false;
-        this.trigger({
-            loading: false,
-            showBatchOps: this.showBatchOps
-        })
-    },
-
     editFolder() {
         this.trigger({
             loading: true
@@ -451,7 +579,7 @@ var ProjectStore = Reflux.createStore({
 
     editFolderSuccess(id) {
         let kind = 'folders/';
-        ProjectActions.loadFolderChildren(id);
+        ProjectActions.getChildren(id, 'folders/');
         ProjectActions.getEntity(id, kind);
         this.trigger({
             loading: false
@@ -476,13 +604,18 @@ var ProjectStore = Reflux.createStore({
         })
     },
 
-    addFileSuccess(id, parentKind, uploadId) {
-        if (parentKind === 'dds-project') {
-            ProjectActions.loadProjectChildren(id);
-        } else {
-            ProjectActions.loadFolderChildren(id);
+    addFileSuccess(parentId, parentKind, uploadId, fileId) {
+        if (this.uploads[uploadId].tags.length) {
+            ProjectActions.appendTags(fileId, 'dds-file', this.uploads[uploadId].tags);
         }
-        if (this.uploads.hasOwnProperty(uploadId)) {
+        if(Object.keys(this.uploads).length === 1) {
+            if (parentKind === 'dds-project') {
+                ProjectActions.getChildren(parentId, 'projects/');
+            } else {
+                ProjectActions.getChildren(parentId, 'folders/');
+            }
+        }
+        if(this.uploads.hasOwnProperty(uploadId)) {
             delete this.uploads[uploadId];
         }
         this.trigger({
@@ -494,19 +627,6 @@ var ProjectStore = Reflux.createStore({
     deleteFile() {
         this.trigger({
             loading: true
-        })
-    },
-
-    deleteFileSuccess(id, parentKind) {
-        if (parentKind === 'dds-project') {
-            ProjectActions.loadProjectChildren(id);
-        } else {
-            ProjectActions.loadFolderChildren(id);
-        }
-        this.showBatchOps = false;
-        this.trigger({
-            loading: false,
-            showBatchOps: this.showBatchOps
         })
     },
 
@@ -575,7 +695,7 @@ var ProjectStore = Reflux.createStore({
     },
 
     getUserNameSuccess(results) {
-        this.users = results.map(function(users) {return users.full_name});
+        this.users = results.map((users) => {return users.full_name});
         this.trigger({
             users: this.users
         });
@@ -642,8 +762,8 @@ var ProjectStore = Reflux.createStore({
         var win = window.open(host + url, '_blank');
         if (win) {
             win.focus();
-        } else {
-            alert('Please allow popups for this site and try downloading again');
+        } else { // if browser blocks popups use location.href instead
+            window.location.href = host + url;
         }
         this.trigger({
             loading: false,
@@ -666,7 +786,7 @@ var ProjectStore = Reflux.createStore({
         })
     },
 
-    startUpload(projId, blob, parentId, parentKind) {
+    startUpload() {
         this.trigger({
             uploading: true
         })
@@ -674,8 +794,16 @@ var ProjectStore = Reflux.createStore({
 
     startUploadSuccess(uploadId, details) {
         this.uploads[uploadId] = details;
-        ProjectActions.hashFile(this.uploads[uploadId], uploadId)
+        ProjectActions.hashFile(this.uploads[uploadId], uploadId);
         ProjectActions.updateAndProcessChunks(uploadId, null, null);
+        window.onbeforeunload = function (e) {// If uploading files and user navigates away from page, send them warning
+            let preventLeave = true;
+            if(preventLeave){
+                return "If you refresh the page or close your browser, files being uploaded will be lost and you" +
+                    " will have to start again. Are" +
+                    " you sure you want to do this?";
+            }
+        };
         this.trigger({
             uploads: this.uploads
         })
@@ -737,19 +865,15 @@ var ProjectStore = Reflux.createStore({
             let chunk = chunks[i];
             if (chunk.chunkUpdates.status === StatusEnum.STATUS_WAITING_FOR_UPLOAD || chunk.chunkUpdates.status === StatusEnum.STATUS_RETRY) {
                 chunk.chunkUpdates.status = StatusEnum.STATUS_UPLOADING;
-                // If processing chunks and user navigates away from page, send them a warning
-                window.onbeforeunload = function (e) {
-                    return "If you refresh the page or close your browser, files being uploaded will be lost and you" +
-                        " will have to start again. Are" +
-                        " you sure you want to do this?";
-                };
-
                 ProjectActions.getChunkUrl(uploadId, upload.blob.slice(chunk.start, chunk.end), chunk.number, upload.size, upload.parentId, upload.parentKind, upload.name, chunk.chunkUpdates);
                 return;
             }
             if(chunk.chunkUpdates.status !== StatusEnum.STATUS_SUCCESS) allDone = false;
         }
-        if (allDone === true)ProjectActions.allChunksUploaded(uploadId, upload.parentId, upload.parentKind, upload.name, upload.label, upload.fileId );
+        if (allDone === true)ProjectActions.checkForHash(uploadId, upload.parentId, upload.parentKind, upload.name, upload.label, upload.fileId);
+        window.onbeforeunload = function (e) { // If done, set to false so no warning is sent.
+            let preventLeave = false;
+        };
     },
 
     uploadError(uploadId, fileName) {
@@ -759,6 +883,47 @@ var ProjectStore = Reflux.createStore({
         }
         this.trigger({
             uploads: this.uploads
+        })
+    },
+
+    checkForHash(uploadId, parentId, parentKind, name, label, fileId) {
+        if (!Array.prototype.find) { // Polyfill for Internet Explorer Array.find()
+            Array.prototype.find = function(predicate) {
+                'use strict';
+                if (this == null) {
+                    throw new TypeError('Array.prototype.find called on null or undefined');
+                }
+                if (typeof predicate !== 'function') {
+                    throw new TypeError('predicate must be a function');
+                }
+                var list = Object(this);
+                var length = list.length >>> 0;
+                var thisArg = arguments[1];
+                var value;
+
+                for (var i = 0; i < length; i++) {
+                    value = list[i];
+                    if (predicate.call(thisArg, value, i, list)) {
+                        return value;
+                    }
+                }
+                return undefined;
+            };
+        }
+        let hash = this.fileHashes.find((fileHash)=>{ // array.find() method not supported in IE
+            return fileHash.id === uploadId;
+        });
+        if(!hash) {
+            ProjectActions.updateAndProcessChunks(uploadId, null, null);
+        }else{
+            ProjectActions.allChunksUploaded(uploadId, parentId, parentKind, name, label, fileId, hash.hash);
+        }
+    },
+
+    postHash(hash) {
+        let fileHashes = this.fileHashes.push(hash);
+        this.trigger({
+            fileHashes: fileHashes
         })
     }
 });

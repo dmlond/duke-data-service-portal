@@ -1,11 +1,8 @@
 import React from 'react';
-import { Link } from 'react-router';
 import ProjectActions from '../../actions/projectActions';
 import Tooltip from '../../../util/tooltip.js';
 import FlatButton from 'material-ui/lib/flat-button';
 import Dialog from 'material-ui/lib/dialog';
-import TextField from 'material-ui/lib/text-field';
-import RaisedButton from 'material-ui/lib/raised-button';
 
 class UploadModal extends React.Component {
     constructor() {
@@ -24,12 +21,6 @@ class UploadModal extends React.Component {
                 label="Submit"
                 secondary={true}
                 onTouchTap={this.handleUploadButton.bind(this)} />
-        ];
-        let warnActions = [
-            <FlatButton
-                label="Okay"
-                secondary={true}
-                onTouchTap={this.handleClose.bind(this)} />,
         ];
 
         Tooltip.bindEvents();
@@ -126,10 +117,6 @@ var styles = {
         textAlign: 'center',
         fontColor: '#303F9F'
     },
-    textStyles: {
-        textAlign: 'left',
-        fontColor: '#303F9F'
-    },
     floatingButton: {
         position: 'absolute',
         top: -50,
@@ -137,15 +124,6 @@ var styles = {
         right: '2%',
         zIndex: '2',
         color: '#ffffff'
-    },
-    msg: {
-        textAlign: 'center',
-        marginLeft: 30
-    },
-    warning: {
-        fontSize: 48,
-        textAlign: 'center',
-        color: '#FFEB3B'
     }
 };
 

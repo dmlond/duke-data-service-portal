@@ -15,7 +15,8 @@ class Home extends React.Component {
         this.state = {
             projects: ProjectStore.projects,
             loading: false,
-            modalOpen: MainStore.modalOpen === undefined ? true : MainStore.modalOpen
+            modalOpen: MainStore.modalOpen === undefined ? true : MainStore.modalOpen,
+            screenSize: ProjectStore.screenSize
         };
     }
 
@@ -38,13 +39,14 @@ class Home extends React.Component {
                 secondary={true}
                 onTouchTap={this.handleDeclineButton.bind(this)} />,
             <FlatButton
-                label="AGREE"
+                label="ACCEPT"
                 secondary={true}
                 onTouchTap={this.handleAcceptButton.bind(this)} />
         ];
         let modal = (
             <Dialog
                 style={styles.dialogStyles}
+                contentStyle={this.state.screenSize.width < 580 ? {width: '100%'} : {}}
                 title="Terms of Use - Protected Health Information"
                 actions={standardActions}
                 autoDetectWindowHeight={true}
